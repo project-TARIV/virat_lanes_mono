@@ -14,7 +14,7 @@
 #include <tf/transform_datatypes.h>
 
 #include <dynamic_reconfigure/server.h>
-#include <igvc_bot/LanesConfig.h>
+#include <lanes_mono/LanesConfig.h>
 
 #include <utility>
 #include <vector>
@@ -188,7 +188,7 @@ void callback(const sensor_msgs::ImageConstPtr &msg_left,
 // This allows us to change params of the node while it is running: uses cfg/lanes.cfg.
 // Try running `rosrun rqt_reconfigure rqt_reconfigure` while node is running.
 // This also auto loads any params initially set in the param server.
-void dynamic_reconfigure_callback(const igvc_bot::LanesConfig &config, const uint32_t &level, Helpers &helpers) {
+void dynamic_reconfigure_callback(const lanes_mono::LanesConfig &config, const uint32_t &level, Helpers &helpers) {
     ROS_INFO("Reconfiguring the params.");
 
     if (level & 1u << 0u) {
@@ -241,8 +241,8 @@ int main(int argc, char **argv) {
     helper.cameraModel.fromCameraInfo(camera_info);
 
 
-    dynamic_reconfigure::Server<igvc_bot::LanesConfig> server;
-    dynamic_reconfigure::Server<igvc_bot::LanesConfig>::CallbackType dynamic_reconfigure_callback_function = boost::bind(
+    dynamic_reconfigure::Server<lanes_mono::LanesConfig> server;
+    dynamic_reconfigure::Server<lanes_mono::LanesConfig>::CallbackType dynamic_reconfigure_callback_function = boost::bind(
             &dynamic_reconfigure_callback, _1, _2, boost::ref(helper));
     server.setCallback(dynamic_reconfigure_callback_function);
 
