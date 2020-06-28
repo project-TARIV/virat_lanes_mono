@@ -214,7 +214,7 @@ include_directories(
 # catkin_add_nosetests(test)
 
 
-add_executable(lanes_mono src/lanes_mono.cpp)
+add_executable(lanes_mono src/lanes_mono.cpp include/lanes_mono/LaneHelpers.h src/LaneHelpers.cpp)
 
 set_property(TARGET lanes_mono PROPERTY CXX_STANDARD 11)
 

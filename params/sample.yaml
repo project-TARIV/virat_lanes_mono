@@ -1,11 +1,32 @@
-h_lower: 0
-h_upper: 180
-s_lower: 0
-s_upper: 50
-v_lower: 0
-v_upper: 255
+# DONT Actually use sample, Sample just
+#h_lower: 0
+#h_upper: 180
+#s_lower: 0
+#s_upper: 50
+#v_lower: 0
+#v_upper: 255
+#
+#erosion_size: 3
+#erosion_iter: 9 #5  #1
+#publish_masked: yes
+#blur_size: 5 #3
 
-erosion_size: 3
-erosion_iter: 9 #5  #1
-publish_masked: yes
-blur_size: 5 #3
+dynamic_reconfigure: no
+
+cv:
+  lane_lower: [0,0,0]
+  lane_upper: [180,40,255]
+  barrel_lower: [0,250,0]
+  barrel_upper: [180,255,255]
+  #  h_lower: 0
+  #  h_upper: 180
+  #  s_lower: 0
+  #  s_upper: 50
+  #  v_lower: 0
+  #  v_upper: 255
+  erosion_size: 2
+  erosion_iter: 1 #1
+  blur_size: 4 #3
+  upper_mask_percent: 50
+
+  publish_masked: yes

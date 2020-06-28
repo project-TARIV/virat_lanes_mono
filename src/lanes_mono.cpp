@@ -8,119 +8,55 @@
 #include <image_geometry/pinhole_camera_model.h>
 
 #include <sensor_msgs/PointCloud2.h>
-#include <sensor_msgs/point_cloud2_iterator.h>
 
-#include <tf/transform_listener.h>
 #include <tf/transform_datatypes.h>
 
 #include <dynamic_reconfigure/server.h>
 #include <lanes_mono/LanesConfig.h>
 
-#include <utility>
+#include "../include/lanes_mono/LaneHelpers.h"
+//#include <lanes_mono/LaneHelpers.h>
 #include <vector>
-
-
-// Objects that the callback needs. Initialized in main().
-// TODO: add a mutex
-struct Helpers {
-    Helpers(ros::Publisher pc_publisher, image_transport::Publisher image_masked_publisher) {
-        pub_pc = pc_publisher;
-        pub_masked = image_masked_publisher;
-    }
-
-    ros::Publisher pub_pc;
-    image_transport::Publisher pub_masked;
-
-    cv::Scalar white_lower{0, 0, 0}, white_upper{180, 40, 255}; // HSV range for color white.
-
-    double rect_frac{0.6}; // Vertical fraction of image masked
-
-    uint8_t erosion_size{2}, erosion_iter{1};
-    cv::Mat erosion_element{cv::getStructuringElement(cv::MorphShapes::MORPH_ELLIPSE, cv::Size(2 * 3 + 1, 2 * 3 + 1))};
-
-    uint8_t blur_size{7};
-
-    bool publish_masked{false};
-
-    // For projecting the image onto the ground.
-    image_geometry::PinholeCameraModel cameraModel;
-    tf::TransformListener listener;
-};
 
 
 const char *topic_image = "image_rect_color";
 const char *topic_camera_info = "camera_info";
 const char *topic_masked = "image_masked";
-const char *topic_pointcloud2 = "points2";
+
+const char *topic_pc = "points2";
 
 // In rviz map/odom seems to be a true horizontal plane located at ground level.
 const char *ground_frame = "odom";
 
+void process_image(const cv_bridge::CvImageConstPtr &cv_img, std::vector<cv::Point> &points,
+                   const Helpers::CVParams &params, image_transport::Publisher *cv_pub);
 
-void callback(const sensor_msgs::ImageConstPtr &msg_left,
+
+void callback(const sensor_msgs::ImageConstPtr &msg,
               Helpers &helper) {
 
-    try {
 
+    try {
         tf::StampedTransform transform;
         helper.listener.lookupTransform(ground_frame, helper.cameraModel.tfFrame(), ros::Time(0), transform);
 
-        cv::Mat hsv, blur, raw_mask, eroded_mask, final_mask, final_mask2, final_mask1, masked, bgr, grey, eroded_mask1;
-
-        cv_bridge::CvImageConstPtr cv_img = cv_bridge::toCvCopy(msg_left, "bgr8");
-
-
-        cv::cvtColor(cv_img->image, hsv, cv::COLOR_BGR2HSV);
-        cv::GaussianBlur(hsv, blur, cv::Size(helper.blur_size, helper.blur_size), 0, 0);
-
-        // Get white pixels
-        cv::inRange(blur, helper.white_lower, helper.white_upper, raw_mask);
+        std::vector<cv::Point> points;
+        process_image(cv_bridge::toCvCopy(msg, "bgr8"), points, helper.cv, &helper.pub.masked);
 
 
-        // Flood Fill from the top of the mask to remove the sky in gazebo.
-        cv::floodFill(raw_mask, cv::Point(raw_mask.cols / 2, 2), cv::Scalar(0));
-
-        // Errors in projection increase as we approach the halfway point of the image:
-        // Apply a mask to remove top 60%
-        raw_mask(cv::Rect(0, 0, raw_mask.cols, (int) (raw_mask.rows * helper.rect_frac))) = 0;
-
-        cv::erode(raw_mask, eroded_mask, helper.erosion_element, cv::Point(-1, -1), helper.erosion_iter);
-
-        cv::erode(eroded_mask, eroded_mask1, helper.erosion_element, cv::Point(-1, -1), helper.erosion_iter);
-
-        cv::medianBlur(eroded_mask1, final_mask1, 3);
-        cv::medianBlur(final_mask1, final_mask, 5);
-
-        cv_img->image.copyTo(masked, final_mask);
-
-
-        if (helper.publish_masked) {
-            helper.pub_masked.publish(cv_bridge::CvImage(cv_img->header, cv_img->encoding, masked).toImageMsg());
-        }
-
-        std::vector<cv::Point> points; // All the points which is detected as part of the lane.
-        cv::findNonZero(final_mask, points);
-
-
-        // Initialize the point cloud:
-        sensor_msgs::PointCloud2Ptr point_cloud = boost::make_shared<sensor_msgs::PointCloud2>();
-        point_cloud->header.frame_id = ground_frame;
-        point_cloud->header.stamp = ros::Time::now();
-        point_cloud->height = 1;
-        point_cloud->width = points.size();
-        point_cloud->is_bigendian = false;
-        point_cloud->is_dense = false;
-
-        sensor_msgs::PointCloud2Modifier pc_mod(*point_cloud);
-        pc_mod.setPointCloud2FieldsByString(1, "xyz");
+        // PC Publishing
+        helper.pub.pc.clear_cloud();
+        //auto[x, y, z] = helper.pub.pc.get_iter(points.size());
+        auto _pc_iters = helper.pub.pc.get_iter(points.size());
+        auto &x = _pc_iters[0], &y = _pc_iters[1], &z = _pc_iters[2];
+        helper.pub.pc.header->frame_id = ground_frame;
+        helper.pub.pc.header->stamp = ros::Time::now();
 
 
         // Change the transform to a more useful form.
         const tf::Quaternion trans_rot = transform.getRotation();
         const cv::Vec3d trans_vec{trans_rot.x(), trans_rot.y(), trans_rot.z()};
         const double trans_sca = trans_rot.w();
-
-        sensor_msgs::PointCloud2Iterator<float> x(*point_cloud, "x"), y(*point_cloud, "y"), z(*point_cloud, "z");
 
         for (const auto &point : points) {
             // ___________ Ray is a vector that points from the camera to the pixel: __________
@@ -178,45 +114,80 @@ void callback(const sensor_msgs::ImageConstPtr &msg_left,
             ++y;
             ++z;
         }
-        helper.pub_pc.publish(point_cloud);
+        helper.pub.pc.publish();
 
     } catch (std::exception &e) { // Not a good idea....
         ROS_ERROR("Callback failed: %s", e.what());
     }
 }
 
+void process_image(const cv_bridge::CvImageConstPtr &cv_img, std::vector<cv::Point> &points,
+                   const Helpers::CVParams &params, image_transport::Publisher *cv_pub) {
+    cv::Mat hsv, blur, raw_mask, eroded_mask, masked, barrel_mask;
+
+    // TODO: Should we just downscale image?
+    cv::cvtColor(cv_img->image, hsv, cv::COLOR_BGR2HSV);
+    cv::GaussianBlur(hsv, blur, cv::Size(params.blur_size, params.blur_size), 0, 0);
+    // Get white pixels
+    cv::inRange(blur, params.white_lower, params.white_upper, raw_mask);
+
+    // Flood Fill from the top of the mask to remove the sky in gazebo.
+    cv::floodFill(raw_mask, cv::Point(raw_mask.cols / 2, 2), cv::Scalar(0));
+
+    // Errors in projection increase as we approach the halfway point of the image:
+    // Apply a mask to remove top 60%
+    raw_mask(cv::Rect(0, 0, raw_mask.cols, (int) (raw_mask.rows * params.rect_frac))) = 0;
+
+
+    // TODO: Very expensive; switch to laser scan
+    std::vector<cv::Point> barrel_points; // Yellow points are part of barrel
+    cv::inRange(blur, params.barrel_lower, params.barrel_upper, barrel_mask);
+    cv::findNonZero(barrel_mask, barrel_points);
+    if (!barrel_points.empty()) {
+        int minx = barrel_mask.cols, maxx = 0;
+        int maxy = 0;
+
+        for (auto &v : barrel_points) {
+            minx = std::min(minx, v.x);
+            maxx = std::max(maxx, v.x);
+            maxy = std::max(maxy, v.y);
+        }
+
+        if (minx < maxx)
+            raw_mask(cv::Rect(minx, 0, maxx - minx, /*raw_mask.rows*/ maxy)) = 0;
+    }
+
+
+    cv::erode(raw_mask, eroded_mask, params.erosion_element, cv::Point(-1, -1), params.erosion_iter);
+
+    cv_img->image.copyTo(masked, eroded_mask);
+
+    if (params.publish_masked && cv_pub)
+        cv_pub->publish(cv_bridge::CvImage(cv_img->header, cv_img->encoding, masked).toImageMsg());
+
+    cv::findNonZero(eroded_mask, points);
+}
+
+
 // This allows us to change params of the node while it is running: uses cfg/lanes.cfg.
 // Try running `rosrun rqt_reconfigure rqt_reconfigure` while node is running.
 // This also auto loads any params initially set in the param server.
-void dynamic_reconfigure_callback(const lanes_mono::LanesConfig &config, const uint32_t &level, Helpers &helpers) {
-    ROS_INFO("Reconfiguring the params.");
+void dynamic_reconfigure_callback(const lanes_mono::LanesConfig &config, const uint32_t &level, Helpers &helper) {
+    std::lock_guard<std::mutex> lock(helper.mutex);
 
     if (level & 1u << 0u) {
-        helpers.white_lower = cv::Scalar(config.h_lower, config.s_lower, config.v_lower);
-    }
+        ROS_INFO("Reconfiguring lanes params.");
+        auto &params = helper.cv;
 
-    if (level & 1u << 1u) {
-        helpers.white_upper = cv::Scalar(config.h_upper, config.s_upper, config.v_upper);
-    }
-
-    if (level & 1u << 2u) {
-        helpers.erosion_size = config.erosion_size;
-        helpers.erosion_iter = config.erosion_iter;
-        helpers.erosion_element = cv::getStructuringElement(cv::MorphShapes::MORPH_ELLIPSE,
-                                                            cv::Size(2 * helpers.erosion_size + 1,
-                                                                     2 * helpers.erosion_size + 1));
-    }
-
-    if (level & 1u << 3u) {
-        helpers.publish_masked = config.publish_masked;
-    }
-
-    if (level & 1u << 4u) {
-        helpers.blur_size = 2 * config.blur_size + 1;
-    }
-
-    if (level & 1u << 5u) {
-        helpers.rect_frac = config.upper_mask_percent / 100.0;
+        params.white_lower = cv::Scalar(config.h_lower, config.s_lower, config.v_lower);
+        params.white_upper = cv::Scalar(config.h_upper, config.s_upper, config.v_upper);
+        params.erosion_size = config.erosion_size;
+        params.erosion_iter = config.erosion_iter;
+        params.erosion_element = cv::getStructuringElement(cv::MorphShapes::MORPH_ELLIPSE,
+                                                           cv::Size(2 * params.erosion_size + 1,
+                                                                    2 * params.erosion_size + 1));
+        params.blur_size = 2 * config.blur_size + 1;
+        params.rect_frac = config.upper_mask_percent / 100.0;
     }
 }
 
@@ -230,10 +201,10 @@ int main(int argc, char **argv) {
     // For receiving and publishing the images in an easy way.
     image_transport::ImageTransport imageTransport(nh);
 
-    Helpers helper{
-            nh.advertise<sensor_msgs::PointCloud2>(topic_pointcloud2, 5),
-            imageTransport.advertise(topic_masked, 1),
-    };
+    Helpers helper({
+                           imageTransport.advertise(topic_masked, 1),
+                           {nh.advertise<sensor_msgs::PointCloud2>(topic_pc, 2)}
+                   });
 
 
     sensor_msgs::CameraInfo::ConstPtr camera_info = ros::topic::waitForMessage<sensor_msgs::CameraInfo>(
@@ -241,10 +212,13 @@ int main(int argc, char **argv) {
     helper.cameraModel.fromCameraInfo(camera_info);
 
 
-    dynamic_reconfigure::Server<lanes_mono::LanesConfig> server;
-    dynamic_reconfigure::Server<lanes_mono::LanesConfig>::CallbackType dynamic_reconfigure_callback_function = boost::bind(
-            &dynamic_reconfigure_callback, _1, _2, boost::ref(helper));
-    server.setCallback(dynamic_reconfigure_callback_function);
+    if (helper.dynamic_reconfigure) {
+        // For the dynamic parameter reconfiguration. see the function dynamic_reconfigure_callback
+        dynamic_reconfigure::Server<lanes_mono::LanesConfig> server({"cv"});
+        dynamic_reconfigure::Server<lanes_mono::LanesConfig>::CallbackType dynamic_reconfigure_callback_function = boost::bind(
+                &dynamic_reconfigure_callback, _1, _2, boost::ref(helper));
+        server.setCallback(dynamic_reconfigure_callback_function);
+    }
 
 
     image_transport::Subscriber sub = imageTransport.subscribe(topic_image, 2,
