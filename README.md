@@ -12,8 +12,8 @@ roslaunch virat_gazebo virat_rviz.launch
 ```
 
 * Launch node
-_Important_: Node must be run in a namespace. Parameters should also be loaded here using rosparam.   
-The node subscribes to ~/image_color and and publishes to ~/points2
+_Important_: Launch file must be run in a namespace. 
+The system subscribes to ~/image_raw and and publishes to ~/points2
 
 ```bash
 ROS_NAMESPACE=/camera_topic/left roslaunch virat_lanes lanes_mono.launch
