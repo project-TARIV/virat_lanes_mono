@@ -1,0 +1,6 @@
+<launch>
+
+    <!-- Launch lane detection (lanes_mono) node -->
+    <node pkg="virat_lanes" type="lanes_mono" name="virat_lanes_mono" output="screen" />
+
+</launch>
