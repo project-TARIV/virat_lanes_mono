@@ -29,6 +29,12 @@ rosrun rqt_reconfigure rqt_reconfigure
 ```
 
 ## Parameters
+- In the launchfile:
+  - image_proc (bool, default 1): Whether to spawn the image_processing node
+  - param_file (string, default $(find lanes_mono)/params/sample.yaml): The parameter file to load
+  
+- In param file:
+
 
 
 ## Note
