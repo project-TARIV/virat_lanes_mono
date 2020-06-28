@@ -1,6 +1,12 @@
 <launch>
+    <arg name="image_proc" default="1"/>
+    <arg name="param_file" default="$(find lanes_mono)/params/sample.yaml"/>
+    
+    <node name="img_proc" pkg="image_proc" type="image_proc" if="$(arg image_proc)"/>
 
     <!-- Launch lane detection (lanes_mono) node -->
-    <node pkg="virat_lanes" type="lanes_mono" name="virat_lanes_mono" output="screen" />
-
+    <node pkg="virat_lanes" type="lanes_mono" name="virat_lanes_mono" output="screen">
+        <rosparam command="load" file="$(arg param_file)"/>
+        <remap from="image_raw" to="image_color" unless="$(arg image_proc)"/>
+    </node>
 </launch>
