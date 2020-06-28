@@ -18,6 +18,7 @@ cv:
   lane_upper: [180,40,255]
   barrel_lower: [0,250,0]
   barrel_upper: [180,255,255]
+  # Use the below params for lane lower/upper if you want dyn reconfiure
   #  h_lower: 0
   #  h_upper: 180
   #  s_lower: 0
