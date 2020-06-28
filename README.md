@@ -32,4 +32,4 @@ rosrun rqt_reconfigure rqt_reconfigure
 
 
 ## Note
-(project-TARIV)[https://github.com/project-TARIV/virat_lanes_mono] and (Team-Clueless)[https://github.com/Team-Clueless/lanes_mono] are synced using this (with this.)[https://gist.github.com/rvl/c3f156e117e22a25f242]
+[project-TARIV](https://github.com/project-TARIV/virat_lanes_mono) and [Team-Clueless](https://github.com/Team-Clueless/lanes_mono) are synced using this [with this.](https://gist.github.com/rvl/c3f156e117e22a25f242)
