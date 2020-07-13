@@ -16,7 +16,7 @@ _Important_: Launch file must be run in a namespace.
 The system subscribes to ~/image_raw and and publishes to ~/points2
 
 ```bash
-ROS_NAMESPACE=/camera_topic/left roslaunch virat_lanes lanes_mono.launch
+ROS_NAMESPACE=/camera_topic/left roslaunch lanes_mono lanes_mono.launch
 ```
 
 **Optional**
