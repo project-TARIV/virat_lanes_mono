@@ -5,7 +5,7 @@
     <node name="img_proc" pkg="image_proc" type="image_proc" if="$(arg image_proc)"/>
 
     <!-- Launch lane detection (lanes_mono) node -->
-    <node pkg="virat_lanes" type="lanes_mono" name="virat_lanes_mono" output="screen">
+    <node pkg="lanes_mono" type="lanes_mono" name="lanes_mono" output="screen">
         <rosparam command="load" file="$(arg param_file)"/>
         <remap from="image_raw" to="image_color" unless="$(arg image_proc)"/>
     </node>
