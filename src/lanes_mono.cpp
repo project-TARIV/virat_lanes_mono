@@ -21,7 +21,7 @@
 
 const char *topic_image = "image_rect_color";
 const char *topic_camera_info = "camera_info";
-const char *topic_masked = "/lane_detection/mono/image_masked";
+const char *topic_masked = "image_masked";
 
 const char *topic_pc = "points2";
 
