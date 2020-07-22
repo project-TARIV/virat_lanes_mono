@@ -9,9 +9,9 @@
 #include <opencv/cv.h>
 
 template<typename T>
-T getParam(const std::string &key, T default_value) {
+T getLaneParam(const std::string &key, T default_value) {
     T val;
-    if (ros::param::get(key, val))
+    if (ros::param::get("lanes_mono/" + key, val))
         return val;
     return default_value;
 }
@@ -62,27 +62,27 @@ struct Helpers {
 
         bool publish_masked;
     } cv{
-            getCvScalar(getParam<std::vector<double> >("cv/lane_lower", {0, 0, 0})),
-            getCvScalar(getParam<std::vector<double> >("cv/lane_upper", {180, 40, 255})),
+            getCvScalar(getLaneParam<std::vector<double> >("cv/lane_lower", {0, 0, 0})),
+            getCvScalar(getLaneParam<std::vector<double> >("cv/lane_upper", {180, 40, 255})),
 
-            getCvScalar(getParam<std::vector<double> >("cv/barrel_lower", {0, 250, 0})),
-            getCvScalar(getParam<std::vector<double> >("cv/barrel_upper", {180, 255, 255})),
+            getCvScalar(getLaneParam<std::vector<double> >("cv/barrel_lower", {0, 250, 0})),
+            getCvScalar(getLaneParam<std::vector<double> >("cv/barrel_upper", {180, 255, 255})),
 
-            (getParam("cv/upper_mask_percent", 60) % 100) / 100.0,
+            (getLaneParam("cv/upper_mask_percent", 60) % 100) / 100.0,
 
-            (uint8_t) getParam("cv/erosion_size", 2),
-            (uint8_t) getParam("cv/erosion_iter", 1),
+            (uint8_t) getLaneParam("cv/erosion_size", 2),
+            (uint8_t) getLaneParam("cv/erosion_iter", 1),
             cv::getStructuringElement(cv::MorphShapes::MORPH_ELLIPSE, cv::Size(2 * 3 + 1, 2 * 3 + 1)),
 
-            (uint8_t) getParam("cv/blur_size", 7),
-            getParam("cv/publish_masked", true)
+            (uint8_t) getLaneParam("cv/blur_size", 7),
+            getLaneParam("cv/publish_masked", true)
     };
 
     // For projecting the image onto the ground.
     image_geometry::PinholeCameraModel cameraModel;
     tf::TransformListener listener;
 
-    bool dynamic_reconfigure{getParam("dynamic_reconfigure", false)};
+    bool dynamic_reconfigure{getLaneParam("dynamic_reconfigure", false)};
 
     std::mutex mutex;
 
