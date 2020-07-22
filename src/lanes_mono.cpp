@@ -211,13 +211,19 @@ int main(int argc, char **argv) {
             topic_camera_info);
     helper.cameraModel.fromCameraInfo(camera_info);
 
+    ros::NodeHandle cv_params{"lanes_mono/cv"};
+    // https://github.com/ros-visualization/rqt_reconfigure/issues/4#issuecomment-599606006
 
+    std::shared_ptr<dynamic_reconfigure::Server<lanes_mono::LanesConfig>> dyn_reconfigure_server;
     if (helper.dynamic_reconfigure) {
         // For the dynamic parameter reconfiguration. see the function dynamic_reconfigure_callback
-        dynamic_reconfigure::Server<lanes_mono::LanesConfig> server({"cv"});
+        dyn_reconfigure_server = std::make_shared<dynamic_reconfigure::Server<lanes_mono::LanesConfig>>(cv_params);
         dynamic_reconfigure::Server<lanes_mono::LanesConfig>::CallbackType dynamic_reconfigure_callback_function = boost::bind(
                 &dynamic_reconfigure_callback, _1, _2, boost::ref(helper));
-        server.setCallback(dynamic_reconfigure_callback_function);
+
+        dyn_reconfigure_server->setCallback(dynamic_reconfigure_callback_function);
+        ROS_INFO("Dynamic Reconfigure Ready");
+
     }
 
 
