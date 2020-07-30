@@ -160,7 +160,7 @@ void process_image(const cv_bridge::CvImageConstPtr &cv_img, std::vector<cv::Poi
 
     // TODO: Should we just downscale image?
     cv::cvtColor(cv_img->image, hsv, cv::COLOR_BGR2HSV);
-    cv::GaussianBlur(hsv, blur, cv::Size(params.blur_size - 1, params.blur_size - 1), 0, 0);
+    cv::GaussianBlur(hsv, blur, cv::Size(params.blur_size, params.blur_size), 0, 0);
     // Get white pixels
     cv::inRange(blur, params.white_lower, params.white_upper, raw_mask);
 
