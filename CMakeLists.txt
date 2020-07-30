@@ -7,7 +7,12 @@ project(lanes_mono)
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
+set(CMAKE_BINARY_DIR ${CMAKE_SOURCE_DIR}/bin)
+set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR})
+set(LIBRARY_OUTPUT_PATH ${CMAKE_BINARY_DIR}/lib)
+set(Eigen3_DIR /usr/lib/cmake/eigen3)
 find_package(catkin REQUIRED COMPONENTS
+        Eigen3 REQUIRED
         roscpp
         cv_bridge
         sensor_msgs
@@ -19,7 +24,8 @@ find_package(catkin REQUIRED COMPONENTS
         )
 
 find_package(OpenCV)
-include_directories(${OpenCV_INCLUDE_DIRS})
+include_directories(${OpenCV_INCLUDE_DIRS}
+                        include)
 
 
 ## System dependencies are found with CMake's conventions
@@ -58,6 +64,7 @@ include_directories(${OpenCV_INCLUDE_DIRS})
 ## Generate messages in the 'msg' folder
 # add_message_files(
 #   FILES
+#   Polynomial.msg
 #   Message1.msg
 #   Message2.msg
 # )
@@ -221,5 +228,5 @@ set_property(TARGET lanes_mono PROPERTY CXX_STANDARD 11)
 
 target_link_libraries(lanes_mono ${catkin_LIBRARIES})
 target_link_libraries(lanes_mono ${OpenCV_LIBRARIES})
-
+target_link_libraries(lanes_mono Eigen3::Eigen)
 add_dependencies(lanes_mono ${PROJECT_NAME}_gencfg)
