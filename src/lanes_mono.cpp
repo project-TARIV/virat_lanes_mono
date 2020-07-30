@@ -28,22 +28,19 @@ const char *topic_pc = "points2";
 
 // In rviz map/odom seems to be a true horizontal plane located at ground level.
 const char *ground_frame = "odom";
+const char *robot_frame = "base_footprint";
 
-Eigen::VectorXd polyfit(Eigen::VectorXd xvals, Eigen::VectorXd yvals, int order)
-{
+Eigen::VectorXd polyfit(Eigen::VectorXd xvals, Eigen::VectorXd yvals, int order) {
     assert(xvals.size() == yvals.size());
     assert(order >= 1 && order <= xvals.size() - 1);
     Eigen::MatrixXd A(xvals.size(), order + 1);
 
-    for (int i = 0; i < xvals.size(); i++)
-    {
+    for (int i = 0; i < xvals.size(); i++) {
         A(i, 0) = 1.0;
     }
 
-    for (int j = 0; j < xvals.size(); j++)
-    {
-        for (int i = 0; i < order; i++)
-        {
+    for (int j = 0; j < xvals.size(); j++) {
+        for (int i = 0; i < order; i++) {
             A(j, i + 1) = A(j, i) * xvals(j);
         }
     }
@@ -57,11 +54,9 @@ void process_image(const cv_bridge::CvImageConstPtr &cv_img, std::vector<cv::Poi
                    const Helpers::CVParams &params, image_transport::Publisher *cv_pub);
 
 void callback(const sensor_msgs::ImageConstPtr &msg,
-              Helpers &helper)
-{
+              Helpers &helper) {
 
-    try
-    {
+    try {
         tf::StampedTransform transform;
         helper.listener.lookupTransform(ground_frame, helper.cameraModel.tfFrame(), ros::Time(0), transform);
 
@@ -81,10 +76,10 @@ void callback(const sensor_msgs::ImageConstPtr &msg,
         const cv::Vec3d trans_vec{trans_rot.x(), trans_rot.y(), trans_rot.z()};
         const double trans_sca = trans_rot.w();
 
-        std::vector<double>ptsy; 
-        std::vector<double>ptsx; 
-        for (const auto &point : points)
-        {
+        std::vector<double> ptsy;
+        std::vector<double> ptsx;
+
+        for (const auto &point : points) {
             // ___________ Ray is a vector that points from the camera to the pixel: __________
             // Its calculation is pretty simple but is easier to use the image_geometry package.
             /* Basically:
@@ -120,7 +115,10 @@ void callback(const sensor_msgs::ImageConstPtr &msg,
             // Rotate ray by using the transform.
             // Kinda black mathematics on v_p = q * v * q'
             // https://gamedev.stackexchange.com/a/50545/90578
-            cv::Vec3d ray_p = 2.0 * trans_vec.dot(ray) * trans_vec + (trans_sca * trans_sca - trans_vec.dot(trans_vec)) * ray + 2.0f * trans_sca * trans_vec.cross(ray);
+            cv::Vec3d ray_p =
+                    2.0 * trans_vec.dot(ray) * trans_vec +
+                    (trans_sca * trans_sca - trans_vec.dot(trans_vec)) * ray +
+                    2.0f * trans_sca * trans_vec.cross(ray);
 
             if (ray_p[2] == 0) // Should never happen
                 continue;
@@ -133,15 +131,15 @@ void callback(const sensor_msgs::ImageConstPtr &msg,
             *y = transform.getOrigin().y() - ray_p[1] * scale;
             *z = 0; // transform.getOrigin().z() - ray_p[2] * scale;
 
-
-            ptsy.push_back(*y);
             ptsx.push_back(*x);
+            ptsy.push_back(*y);
+
             // Pointcloud iterators
             ++x;
             ++y;
             ++z;
         }
-
+        helper.pub.pc.publish();
 
         double*ptrx = &ptsx[0];
         Eigen::Map<Eigen::VectorXd> ptsx_transformed(ptrx, ptsx.size());
@@ -150,18 +148,17 @@ void callback(const sensor_msgs::ImageConstPtr &msg,
         Eigen::Map<Eigen::VectorXd> ptsy_transformed(ptry, ptsy.size());
 
         Eigen::VectorXd coeffs = polyfit(ptsx_transformed, ptsy_transformed, 3);
-        std::cout<<coeffs[0]<<"\n"<<coeffs[1]<<"\n"<<coeffs[2]<<"\n"<<coeffs[3]<<"\n"<<"---------"<<"\n";
-        helper.pub.pc.publish();
+
+        std::cout << coeffs[0] << "\n" << coeffs[1] << "\n" << coeffs[2] << "\n" << coeffs[3] << "\n" << "---------"
+                  << "\n";
     }
-    catch (std::exception &e)
-    { // Not a good idea....
+    catch (std::exception &e) { // Not a good idea....
         ROS_ERROR("Callback failed: %s", e.what());
     }
 }
 
 void process_image(const cv_bridge::CvImageConstPtr &cv_img, std::vector<cv::Point> &points,
-                   const Helpers::CVParams &params, image_transport::Publisher *cv_pub)
-{
+                   const Helpers::CVParams &params, image_transport::Publisher *cv_pub) {
     cv::Mat hsv, blur, raw_mask, eroded_mask, masked, barrel_mask;
 
     // TODO: Should we just downscale image?
@@ -175,19 +172,17 @@ void process_image(const cv_bridge::CvImageConstPtr &cv_img, std::vector<cv::Poi
 
     // Errors in projection increase as we approach the halfway point of the image:
     // Apply a mask to remove top 60%
-    raw_mask(cv::Rect(0, 0, raw_mask.cols, (int)(raw_mask.rows * params.rect_frac))) = 0;
+    raw_mask(cv::Rect(0, 0, raw_mask.cols, (int) (raw_mask.rows * params.rect_frac))) = 0;
 
     // TODO: Very expensive; switch to laser scan
     std::vector<cv::Point> barrel_points; // Yellow points are part of barrel
     cv::inRange(blur, params.barrel_lower, params.barrel_upper, barrel_mask);
     cv::findNonZero(barrel_mask, barrel_points);
-    if (!barrel_points.empty())
-    {
+    if (!barrel_points.empty()) {
         int minx = barrel_mask.cols, maxx = 0;
         int maxy = 0;
 
-        for (auto &v : barrel_points)
-        {
+        for (auto &v : barrel_points) {
             minx = std::min(minx, v.x);
             maxx = std::max(maxx, v.x);
             maxy = std::max(maxy, v.y);
@@ -210,12 +205,10 @@ void process_image(const cv_bridge::CvImageConstPtr &cv_img, std::vector<cv::Poi
 // This allows us to change params of the node while it is running: uses cfg/lanes.cfg.
 // Try running `rosrun rqt_reconfigure rqt_reconfigure` while node is running.
 // This also auto loads any params initially set in the param server.
-void dynamic_reconfigure_callback(const lanes_mono::LanesConfig &config, const uint32_t &level, Helpers &helper)
-{
+void dynamic_reconfigure_callback(const lanes_mono::LanesConfig &config, const uint32_t &level, Helpers &helper) {
     std::lock_guard<std::mutex> lock(helper.mutex);
 
-    if (level & 1u << 0u)
-    {
+    if (level & 1u << 0u) {
         ROS_INFO("Reconfiguring lanes params.");
         auto &params = helper.cv;
 
@@ -231,8 +224,7 @@ void dynamic_reconfigure_callback(const lanes_mono::LanesConfig &config, const u
     }
 }
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
     ros::init(argc, argv, "lane");
     ros::NodeHandle nh;
 
@@ -245,19 +237,18 @@ int main(int argc, char **argv)
                     {nh.advertise<sensor_msgs::PointCloud2>(topic_pc, 2)}});
 
     sensor_msgs::CameraInfo::ConstPtr camera_info = ros::topic::waitForMessage<sensor_msgs::CameraInfo>(
-        topic_camera_info);
+            topic_camera_info);
     helper.cameraModel.fromCameraInfo(camera_info);
 
     ros::NodeHandle cv_params{"lanes_mono/cv"};
     // https://github.com/ros-visualization/rqt_reconfigure/issues/4#issuecomment-599606006
 
     std::shared_ptr<dynamic_reconfigure::Server<lanes_mono::LanesConfig>> dyn_reconfigure_server;
-    if (helper.dynamic_reconfigure)
-    {
+    if (helper.dynamic_reconfigure) {
         // For the dynamic parameter reconfiguration. see the function dynamic_reconfigure_callback
         dyn_reconfigure_server = std::make_shared<dynamic_reconfigure::Server<lanes_mono::LanesConfig>>(cv_params);
         dynamic_reconfigure::Server<lanes_mono::LanesConfig>::CallbackType dynamic_reconfigure_callback_function = boost::bind(
-            &dynamic_reconfigure_callback, _1, _2, boost::ref(helper));
+                &dynamic_reconfigure_callback, _1, _2, boost::ref(helper));
 
         dyn_reconfigure_server->setCallback(dynamic_reconfigure_callback_function);
         ROS_INFO("Dynamic Reconfigure Ready");
