@@ -141,11 +141,8 @@ void callback(const sensor_msgs::ImageConstPtr &msg,
         }
         helper.pub.pc.publish();
 
-        double*ptrx = &ptsx[0];
-        Eigen::Map<Eigen::VectorXd> ptsx_transformed(ptrx, ptsx.size());
-
-        double*ptry = &ptsy[0];
-        Eigen::Map<Eigen::VectorXd> ptsy_transformed(ptry, ptsy.size());
+        Eigen::Map<Eigen::VectorXd> ptsx_transformed(ptsx.data(), ptsx.size()), ptsy_transformed(ptsy.data(),
+                                                                                                 ptsy.size());
 
         Eigen::VectorXd coeffs = polyfit(ptsx_transformed, ptsy_transformed, 3);
 
