@@ -139,23 +139,29 @@ void process_image(const cv_bridge::CvImageConstPtr &cv_img, std::vector<cv::Poi
     raw_mask(cv::Rect(0, 0, raw_mask.cols, (int) (raw_mask.rows * params.rect_frac))) = 0;
 
 
+// **************************************************************************************************
+// THIS SECTION IS REALLY COMPUTATIONALLY INTENSIVE IT SEEMS, SLOWING DOWN SIM LIKE CRAZY
+// **************************************************************************************************
+
     // TODO: Very expensive; switch to laser scan
-    std::vector<cv::Point> barrel_points; // Yellow points are part of barrel
-    cv::inRange(blur, params.barrel_lower, params.barrel_upper, barrel_mask);
-    cv::findNonZero(barrel_mask, barrel_points);
-    if (!barrel_points.empty()) {
-        int minx = barrel_mask.cols, maxx = 0;
-        int maxy = 0;
+    // std::vector<cv::Point> barrel_points; // Yellow points are part of barrel
+    // cv::inRange(blur, params.barrel_lower, params.barrel_upper, barrel_mask);
+    // cv::findNonZero(barrel_mask, barrel_points);
+    // if (!barrel_points.empty()) {
+    //     int minx = barrel_mask.cols, maxx = 0;
+    //     int maxy = 0;
 
-        for (auto &v : barrel_points) {
-            minx = std::min(minx, v.x);
-            maxx = std::max(maxx, v.x);
-            maxy = std::max(maxy, v.y);
-        }
+    //     for (auto &v : barrel_points) {
+    //         minx = std::min(minx, v.x);
+    //         maxx = std::max(maxx, v.x);
+    //         maxy = std::max(maxy, v.y);
+    //     }
 
-        if (minx < maxx)
-            raw_mask(cv::Rect(minx, 0, maxx - minx, /*raw_mask.rows*/ maxy)) = 0;
-    }
+    //     if (minx < maxx)
+    //         raw_mask(cv::Rect(minx, 0, maxx - minx, /*raw_mask.rows*/ maxy)) = 0;
+    // }
+
+// **************************************************************************************************
 
 
     cv::erode(raw_mask, eroded_mask, params.erosion_element, cv::Point(-1, -1), params.erosion_iter);
