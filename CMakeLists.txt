@@ -12,6 +12,7 @@ find_package(catkin REQUIRED COMPONENTS
         cv_bridge
         sensor_msgs
         image_transport
+        image_proc
         cv_bridge
         dynamic_reconfigure
         image_geometry
