@@ -112,7 +112,7 @@ generate_dynamic_reconfigure_options(
 ## DEPENDS: system dependencies of this project that dependent projects also need
 
 catkin_package(
-        #  INCLUDE_DIRS include
+        INCLUDE_DIRS include
         #  LIBRARIES lanes_mono
         #  CATKIN_DEPENDS controller_manager gazebo_ros joint_state_publisher robot_state_publisher roscpp rospy rviz
         #  DEPENDS system_lib
@@ -125,7 +125,7 @@ catkin_package(
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
 include_directories(
-        # include
+        include
         ${catkin_INCLUDE_DIRS}
 )
 
@@ -215,7 +215,7 @@ include_directories(
 # catkin_add_nosetests(test)
 
 
-add_executable(lanes_mono src/lanes_mono.cpp include/lanes_mono/LaneHelpers.h src/LaneHelpers.cpp)
+add_executable(lanes_mono src/lanes_mono.cpp src/LaneHelpers.cpp)
 
 set_property(TARGET lanes_mono PROPERTY CXX_STANDARD 11)
 
