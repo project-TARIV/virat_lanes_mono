@@ -80,9 +80,9 @@ void callback(const sensor_msgs::ImageConstPtr &msg,
              * If you look at the camera from above:
              *
              * ray_cameraModel_frame: x <---(x) y  camera_left: z (.)---> y
-             *             |                     |
-             *             |                     |
-             *             z                     x
+             *                               |                     |
+             *                               |                     |
+             *                               z                     x
              *
              * What we do is basically scale the ray_cameraModel_frame such that the end touches the ground (we know the lane points are actually on the ground.
              * Then we add those co-ords to the point cloud.
